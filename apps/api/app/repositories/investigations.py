@@ -79,25 +79,6 @@ class InvestigationRepository:
             select(func.count()).select_from(Investigation)) or 0)
 
 
-def _jsonable(value: Any) -> Any:
-    """JSON columns must hold primitives; numpy scalars and dates arrive here
-    from the analytics layer and would otherwise fail to serialise."""
-    import datetime as _dt
-    import decimal as _dec
-
-    if isinstance(value, dict):
-        return {str(k): _jsonable(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_jsonable(v) for v in value]
-    if isinstance(value, (_dt.date, _dt.datetime)):
-        return value.isoformat()
-    if isinstance(value, _dec.Decimal):
-        return float(value)
-    if hasattr(value, "item") and callable(value.item):
-        try:
-            return value.item()
-        except (ValueError, AttributeError):
-            return str(value)
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    return str(value)
+# Storage and the HTTP response must coerce identically; see the note in
+# app/core/serialization.
+from app.core.serialization import jsonable as _jsonable  # noqa: E402

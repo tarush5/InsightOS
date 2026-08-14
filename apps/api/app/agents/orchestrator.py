@@ -77,11 +77,22 @@ class InvestigationEvent:
     elapsed_ms: float = 0.0
 
     def as_dict(self) -> dict:
+        """Coerced here rather than at each consumer.
+
+        `detail` carries values straight out of numpy and pandas, and this is
+        the single point every consumer reads them through -- the WebSocket, the
+        HTTP response and the repository. Coercing at one boundary is what stops
+        a `np.bool_` round-tripping through storage correctly and then failing
+        to serialise on the wire.
+        """
+        from app.core.serialization import jsonable
+
         return {
             "investigation_id": self.investigation_id,
             "stage": str(self.stage), "state": str(self.state),
             "label": self.label, "progress": round(self.progress, 3),
-            "detail": self.detail, "elapsed_ms": round(self.elapsed_ms, 1),
+            "detail": jsonable(self.detail),
+            "elapsed_ms": round(self.elapsed_ms, 1),
         }
 
 
