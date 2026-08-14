@@ -2,8 +2,8 @@ services:
   - type: web
     name: insightos-api
     env: docker
-    dockerfilePath: ./apps/api/Dockerfile
-    dockerContext: ./apps/api
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: free
     healthCheckPath: /api/v1/health
     envVars:
