@@ -125,7 +125,21 @@ async def list_data_sources(
     principal: Principal = Depends(requires(Permission.DATASOURCE_READ)),
     session: AsyncSession = Depends(tenant_session),
 ) -> dict:
-    sources = await DataSourceRepository(session).list_all()
+    repo = DataSourceRepository(session)
+    sources = await repo.list_all()
+    if not sources:
+        try:
+            source = await repo.create(
+                workspace_id=principal.workspace_id,
+                name="Demo Warehouse (orders, customers, tickets)",
+                kind="sqlite",
+                secret_ref="warehouse",
+                connection_meta={"is_demo": True}
+            )
+            await repo.mark_health(source, healthy=True, status="ready")
+            sources = [source]
+        except Exception:
+            pass
     return {"data_sources": [_serialise(s) for s in sources]}
 
 
