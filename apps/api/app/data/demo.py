@@ -15,7 +15,30 @@ from pathlib import Path
 
 import pandas as pd
 
-SEED_DIR = Path(os.getenv("SEED_DIR", "/data/seed"))
+def resolve_seed_dir() -> Path:
+    env_dir = os.getenv("SEED_DIR")
+    if env_dir:
+        p = Path(env_dir)
+        if (p / "orders.csv").exists():
+            return p
+
+    cwd = Path.cwd()
+    candidates = [
+        Path("/app/seed"),
+        cwd / "seed",
+        cwd / "apps" / "api" / "seed",
+        cwd.parent / "seed",
+        Path("/data/seed"),
+        Path(__file__).resolve().parents[3] / "seed",
+        Path(__file__).resolve().parents[2] / "seed",
+        Path(__file__).resolve().parents[1] / "seed",
+    ]
+    for c in candidates:
+        if c.exists() and (c / "orders.csv").exists():
+            return c
+
+    return Path(env_dir) if env_dir else Path("/app/seed")
+
 
 DATE_COLUMNS: dict[str, list[str]] = {
     "orders": ["order_date"],
@@ -41,7 +64,8 @@ class SeedDataMissing(FileNotFoundError):
 
 @lru_cache(maxsize=12)
 def load_table(table: str) -> pd.DataFrame:
-    path = SEED_DIR / f"{table}.csv"
+    seed_dir = resolve_seed_dir()
+    path = seed_dir / f"{table}.csv"
     if not path.exists():
         raise SeedDataMissing(
             f"Seed table '{table}' not found at {path}. Generate it with:\n"
