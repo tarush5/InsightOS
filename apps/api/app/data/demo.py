@@ -40,6 +40,9 @@ def resolve_seed_dir() -> Path:
     return Path(env_dir) if env_dir else Path("/app/seed")
 
 
+SEED_DIR = resolve_seed_dir()
+
+
 DATE_COLUMNS: dict[str, list[str]] = {
     "orders": ["order_date"],
     "support_tickets": ["created_date"],

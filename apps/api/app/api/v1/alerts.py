@@ -48,7 +48,7 @@ def _compile(text: str, segment: dict[str, str]) -> AlertRule:
         # 422 with the missing pieces named: the caller can ask one follow-up
         # question rather than guessing at the grammar.
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": "ambiguous_rule", "message": str(exc),
                     "missing": exc.missing,
                     "known_metrics": sorted(known)})

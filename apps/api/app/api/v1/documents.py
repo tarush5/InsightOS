@@ -44,7 +44,7 @@ async def ingest(
     except DocumentTooLarge as exc:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, str(exc))
     except ValueError as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc))
 
     response = {**record.as_dict(), **store.stats(principal.workspace_id)}
     if record.flagged_chunks:

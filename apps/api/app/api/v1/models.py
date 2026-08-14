@@ -48,12 +48,12 @@ async def train(
     spec = catalog.get(payload.table)
     if spec is None:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             f"Table '{payload.table}' is not in the crawled catalog. "
             f"Known tables: {', '.join(sorted(catalog.tables)) or '(none)'}.")
     if payload.target not in spec.columns:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             f"Column '{payload.target}' is not on '{payload.table}'.")
 
     try:
@@ -76,7 +76,7 @@ async def train(
     except NotEnoughData as exc:
         # Not a 500: the request was valid and the data cannot support a model.
         # The message says which condition failed.
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail={"error": "insufficient_data",
                                     "message": str(exc)})
 

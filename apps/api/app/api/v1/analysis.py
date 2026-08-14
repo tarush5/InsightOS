@@ -87,7 +87,7 @@ def _panel(metric_key: str, dimension: str, start: date, end: date,
     frame = demo_data_provider(metric, start, end)
     if dimension not in frame.columns:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             f"Metric '{metric_key}' is not broken out by '{dimension}'. "
             f"Available: {', '.join(c for c in frame.columns if c != metric_key)}")
     return build_panel(frame, date_col=metric.date_column, unit_col=dimension,
@@ -107,7 +107,7 @@ def _segment_daily_baselines(metric_key: str, dimension: str,
     metric = _metric(metric_key)
     frame = demo_data_provider(metric, start, end)
     if dimension not in frame.columns:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             f"Metric '{metric_key}' has no '{dimension}' breakdown.")
     span = max((end - start).days + 1, 1)
     totals = frame.groupby(dimension)[metric_key].sum()
@@ -134,7 +134,7 @@ async def diff_in_diff(
         # Not a 500: the request was well-formed, the data simply cannot
         # support the design. The message says which part is missing.
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": "insufficient_design", "message": str(exc)})
 
     return {"metric_key": payload.metric_key, "dimension": payload.dimension,
@@ -163,7 +163,7 @@ async def simulate(
         result = ScenarioSimulator().simulate(baselines, levers,
                                               horizon_days=payload.horizon_days)
     except UnknownSegment as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc))
 
     return {"metric_key": payload.metric_key, "dimension": payload.dimension,
             "baseline_window": [str(payload.baseline_start), str(payload.baseline_end)],
@@ -188,7 +188,7 @@ async def break_even(
                                         target_delta=payload.target_delta,
                                         horizon_days=payload.horizon_days)
     except UnknownSegment as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc))
 
     if required is None:
         return {"reachable": False,

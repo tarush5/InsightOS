@@ -120,7 +120,7 @@ async def run_investigation(
 
     final = events[-1] if events else None
     if final and final["state"] == "failed":
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             final["detail"].get("error", "Investigation failed."))
     return {"reference": reference, "timeline": events,
             "result": final["detail"] if final else None}
@@ -205,7 +205,7 @@ async def export_investigation(
     from app.reports.export import build_report, to_pdf
 
     if format not in {"markdown", "pdf"}:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "format must be 'markdown' or 'pdf'")
 
     record = await InvestigationRepository(session).by_reference(reference)

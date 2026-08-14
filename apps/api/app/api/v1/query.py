@@ -70,7 +70,7 @@ async def _executor(session: AsyncSession, principal: Principal,
 
 def _generation_error(result) -> HTTPException:
     return HTTPException(
-        status.HTTP_422_UNPROCESSABLE_CONTENT,
+        status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail={"error": "no_valid_query",
                 "message": result.reason,
                 "degraded": result.degraded,
@@ -132,7 +132,7 @@ async def ask(
                                "execution. This is a defect, not a bad question.",
                     "findings": exc.result.error_summary})
     except QueryFailed as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail={"error": "query_failed", "message": str(exc),
                                     "retryable": exc.retryable, "sql": result.sql})
 

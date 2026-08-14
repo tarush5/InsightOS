@@ -82,7 +82,7 @@ async def create_data_source(
     try:
         validate_ref(payload.secret_ref)
     except InvalidSecretRef as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail={"error": "invalid_secret_ref",
                                     "message": str(exc)})
 

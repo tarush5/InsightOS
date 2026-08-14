@@ -79,7 +79,7 @@ async def signup(payload: SignupRequest,
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "An account with that email already exists.")
     except ValueError as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc))
 
     await AuditRepository(session).record(
         action="auth.signup", workspace_id=workspace.id, user_id=user.id,
