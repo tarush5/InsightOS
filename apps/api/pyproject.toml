@@ -1,0 +1,63 @@
+[project]
+name = "insightos-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "email-validator>=2.2",
+  "sqlalchemy>=2.0.36",
+  "alembic>=1.14",
+  # asyncpg drives Postgres in production; aiosqlite lets the persistence tests
+  # run without a server. The models are dialect-portable so both exercise the
+  # same schema (see app/db/types.GUID).
+  "asyncpg>=0.30",
+  "aiosqlite>=0.20",
+  "redis>=5.2",
+  "arq>=0.26",
+  "pyjwt>=2.10",
+  "sqlglot>=25.0",
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "python-multipart>=0.0.17",
+]
+
+[project.optional-dependencies]
+# scikit-learn and reportlab are required by app/ml and app/reports; the rest
+# are optional accelerators the AutoML module falls back from cleanly.
+ml = [
+  "scikit-learn>=1.5",
+  "reportlab>=4.2",
+  "xgboost>=2.1",
+  "lightgbm>=4.5",
+  "shap>=0.46",
+  "mlflow>=2.18",
+]
+llm = ["anthropic>=0.40", "openai>=1.57"]
+observability = [
+  "opentelemetry-sdk>=1.29",
+  "opentelemetry-instrumentation-fastapi>=0.50b0",
+  "prometheus-client>=0.21",
+]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "httpx>=0.28", "ruff>=0.8", "black>=24.10", "mypy>=1.13"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "S"]
+ignore = ["S101"]
+
+[tool.black]
+line-length = 100
+
+# Pytest configuration lives in pytest.ini (asyncio_mode and the warning filter
+# need to be in one place; two sources of truth here caused silent divergence).
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true

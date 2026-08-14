@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: dark; }
+
+  body {
+    @apply bg-base text-ink font-sans antialiased;
+    /* Two very low-opacity radial washes give the "command center" depth the
+       brief asks for without the cost of an animated canvas on every page. */
+    background-image:
+      radial-gradient(60rem 40rem at 12% -10%, rgba(34, 211, 238, 0.07), transparent 60%),
+      radial-gradient(50rem 36rem at 92% 8%, rgba(139, 92, 246, 0.07), transparent 62%);
+    background-attachment: fixed;
+  }
+
+  /* Keyboard focus must always be visible; the brief's dark palette makes a
+     default outline nearly invisible, so we set an explicit high-contrast ring. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-cyan ring-offset-2 ring-offset-base rounded-sm;
+  }
+
+  ::selection { @apply bg-cyan/25 text-ink; }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-hairline bg-surface/70 backdrop-blur-sm;
+  }
+  .panel-elevated {
+    @apply rounded-2xl border border-hairline bg-elevated;
+  }
+  /* Small-caps mono labels are the utility voice of the whole interface: every
+     metric label, stage name and evidence key uses this one treatment. */
+  .label-mono {
+    @apply font-mono text-[0.6875rem] uppercase tracking-[0.16em] text-ink-faint;
+  }
+  .grid-field {
+    background-image:
+      linear-gradient(to right, rgba(34, 37, 47, 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(34, 37, 47, 0.5) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 78%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

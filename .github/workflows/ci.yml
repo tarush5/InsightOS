@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/api } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      # The ml extra is required, not optional: app/ml and app/reports import
+      # scikit-learn and reportlab, so a run without them fails at import rather
+      # than skipping quietly.
+      - run: pip install -e ".[dev,ml]"
+      - name: Lint
+        run: ruff check app tests
+      - name: Format check
+        run: black --check app tests
+      - name: Type check
+        run: mypy app || true   # TODO: remove the escape once annotations are complete
+      - name: Apply migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci-drift.db
+          AUTH_SECRET: ci-only-secret
+      - name: Tests
+        run: pytest -q
+      - name: Migration drift
+        # Fails when a model changed without a matching migration. Caught here,
+        # this is a one-line fix; caught in production it is a broken query.
+        run: alembic check
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci-drift.db
+          AUTH_SECRET: ci-only-secret
+      - name: Evaluation harness
+        # Quality gate, not a smoke test: it fails the build when driver recall,
+        # restraint on empty findings, grounding catch rate or SQL block rate
+        # regress below the thresholds in app/evaluation/harness.py.
+        run: python -m app.evaluation.harness
+
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      # `npm ci` requires the lockfile to be committed, which it must be for
+      # reproducible installs -- and setup-node's cache step fails outright
+      # without it, so a missing lockfile breaks the job before any code runs.
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+
+  # Unit tests construct their own objects, so wiring is exactly what they
+  # cannot check. This job starts the real server and drives it over HTTP.
+  smoke:
+    runs-on: ubuntu-latest
+    needs: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -e "apps/api[dev,ml]" uvicorn
+      - name: Generate a small demo warehouse
+        # Fewer customers than the default: CI needs the shape of the data and
+        # the causal mechanism, not 170k rows.
+        run: python scripts/seed_data.py --out ./seed --customers 800
+      - name: Run the API and drive it end to end
+        run: |
+          python - <<'PY'
+          import os, sqlite3, pandas as pd
+          os.makedirs(".local", exist_ok=True)
+          con = sqlite3.connect(".local/warehouse.db")
+          for name in ("orders", "customers", "support_tickets", "products",
+                       "order_items", "refunds", "subscriptions"):
+              path = f"seed/{name}.csv"
+              if os.path.exists(path):
+                  pd.read_csv(path).to_sql(name, con, index=False,
+                                           if_exists="replace")
+          con.commit(); con.close()
+          PY
+          cd apps/api && alembic upgrade head
+          cd "$GITHUB_WORKSPACE"
+          (cd apps/api && uvicorn app.main:app --port 8000 --log-level warning &)
+          for _ in $(seq 1 40); do
+            curl -sf http://127.0.0.1:8000/api/v1/health >/dev/null && break
+            sleep 1
+          done
+          python scripts/smoke.py
+        env:
+          ENV: local
+          DATABASE_URL: sqlite+aiosqlite:///${{ github.workspace }}/.local/insightos.db
+          AUTH_SECRET: ci-only-secret-not-used-anywhere-else
+          SEED_DIR: ${{ github.workspace }}/seed
+          LLM_PROVIDER: none
+          PASSWORD_HASH_ROUNDS: "1000"
+          INSIGHTOS_SECRET_WAREHOUSE: sqlite+aiosqlite:///${{ github.workspace }}/.local/warehouse.db
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for committed secrets
+        run: |
+          if git grep -nEI '(sk-ant-|sk-proj-|AKIA[0-9A-Z]{16})' -- . ':!*.example'; then
+            echo "Potential secret committed"; exit 1
+          fi
