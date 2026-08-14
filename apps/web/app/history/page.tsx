@@ -5,6 +5,7 @@ import { EmptyState, ErrorNote, PageHeading, Shell, SignInRequired } from "@/com
 import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { HistoryRow } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
 const PAGE_SIZE = 25;
 
@@ -29,6 +30,7 @@ function relativeTime(iso: string | null) {
 
 export default function HistoryPage() {
   const { status } = useSession();
+  const router = useRouter();
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -96,7 +98,11 @@ export default function HistoryPage() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.reference} className="border-b border-hairline/60 last:border-0 hover:bg-elevated/40">
+                <tr
+                  key={row.reference}
+                  onClick={() => router.push(`/investigate?ref=${row.reference}`)}
+                  className="border-b border-hairline/60 last:border-0 hover:bg-elevated/40 cursor-pointer transition-colors"
+                >
                   <td className="px-4 py-3 font-mono text-xs text-cyan">{row.reference}</td>
                   <td className="px-4 py-3">
                     <p className="text-ink">{row.question}</p>

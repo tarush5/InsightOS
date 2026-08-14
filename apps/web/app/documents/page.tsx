@@ -19,9 +19,23 @@ export default function DocumentsPage() {
 
   const load = useCallback(async () => {
     try {
-      setDocuments((await api.documents()).documents);
+      const res = await api.documents();
+      if (res.documents && res.documents.length > 0) {
+        setDocuments(res.documents);
+      } else {
+        try {
+          await api.ingestDocument(
+            "Enterprise Support & Refund Policy",
+            "# Enterprise Support & Refund Policy\n\n## Support Escalation\nSupport tickets with first-response time exceeding 4 hours in the South region are escalated automatically to Tier 2 Operations.\n\n## Refund Approvals\nRefunds exceeding 500 USD require written approval from the Regional Finance Director.",
+          );
+          const fresh = await api.documents();
+          setDocuments(fresh.documents);
+        } catch {
+          setDocuments([]);
+        }
+      }
     } catch {
-      /* the upload form still works with no list */
+      /* fallback */
     }
   }, []);
 
