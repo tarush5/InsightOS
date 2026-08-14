@@ -108,6 +108,29 @@ docker compose up --build
 # 3. Open http://localhost:3000/investigate
 ```
 
+### Put it on GitHub
+
+```bash
+gh repo create insight-os --private --source=. --push
+```
+
+or, without the `gh` CLI, create an empty repo on github.com and:
+
+```bash
+git remote add origin git@github.com:<you>/insight-os.git
+git push -u origin main
+```
+
+Nothing further is needed: CI runs on push with no secrets configured, because
+the whole system runs offline. Four jobs — `api` (lint, migrations, 359 tests,
+migration-drift check, evaluation harness), `web` (typecheck, lint, build),
+`smoke` (starts the real server and drives 40 checks over HTTP), and `security`
+(scans tracked files for credential patterns).
+
+GitHub Actions runs the checks; it does not host the app. For that, `docker
+compose up` gives you the full stack, or point any container host at
+`apps/api/Dockerfile` and `apps/web/Dockerfile`.
+
 ### Prove it works
 
 ```bash
