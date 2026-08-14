@@ -121,7 +121,7 @@ export default function ReportsPage() {
                 <Link
                   href={`/investigate?ref=${report.reference}`}
                   className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-elevated border border-hairline hover:bg-hairline transition-colors text-sm font-medium"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 >
                   View Full Report <ArrowRight className="h-4 w-4" />
                 </Link>
