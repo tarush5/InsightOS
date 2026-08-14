@@ -24,13 +24,12 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("startup env=%s llm_enabled=%s", settings.ENV, settings.llm_enabled)
-    if settings.ENV == "local":
-        # Local runs bootstrap their own schema so `docker compose up` works
-        # from a clean volume. Staging and production use Alembic, which is the
-        # only path that can safely alter a table that already holds data.
+    try:
         from app.db.session import create_all
         await create_all()
-        log.info("schema ensured (local bootstrap)")
+        log.info("schema ensured (startup bootstrap)")
+    except Exception as exc:
+        log.warning("schema bootstrap note: %s", exc)
     log.info("rate limiter backend=%s", get_limiter().backend)
     if not settings.llm_enabled:
         log.warning(
@@ -55,10 +54,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=["*"] if "*" in settings.CORS_ORIGINS else settings.CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com|http://localhost:.*",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

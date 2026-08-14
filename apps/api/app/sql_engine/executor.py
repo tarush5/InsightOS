@@ -93,9 +93,14 @@ class SQLExecutor:
         self.statement_timeout_ms = statement_timeout_ms or settings.SQL_STATEMENT_TIMEOUT_MS
         self.max_rows = max_rows or settings.SQL_MAX_RESULT_ROWS
         self._dsn = dsn
-        self._engine = engine or create_async_engine(
-            dsn, pool_size=pool_size, max_overflow=2, pool_pre_ping=True,
-            pool_recycle=1800)
+        if engine:
+            self._engine = engine
+        elif "sqlite" in dsn:
+            self._engine = create_async_engine(dsn, pool_pre_ping=True)
+        else:
+            self._engine = create_async_engine(
+                dsn, pool_size=pool_size, max_overflow=2, pool_pre_ping=True,
+                pool_recycle=1800)
 
     @property
     def dialect(self) -> str:

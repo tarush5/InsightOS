@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     OTEL_SERVICE_NAME: str = "insightos-api"
     PROMETHEUS_ENABLED: bool = True
 
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = ["*"]
 
     @field_validator("PASSWORD_HASH_ROUNDS")
     @classmethod
