@@ -36,9 +36,27 @@ async def test_sweep_with_no_alerts_is_a_no_op(db):
 
 
 @pytest.mark.asyncio
-async def test_a_broken_alert_does_not_stop_the_sweep(db):
+async def test_a_broken_alert_does_not_stop_the_sweep(db, monkeypatch):
     """A monitor that silently stopped running is worse than one that never
-    existed, so the failure is recorded and the sweep continues."""
+    existed, so the failure is recorded and the sweep continues.
+
+    The healthy alert's data is stubbed rather than read from the generated
+    warehouse: `seed/` is gitignored, so on a fresh clone both alerts errored
+    and the test asserted the right number for the wrong reason.
+    """
+    import numpy as np
+    import pandas as pd
+
+    import app.workers.alerts as worker
+
+    def fake_series(metric, start, end, segment=None):
+        index = pd.date_range(end="2025-09-01", periods=60, freq="D")
+        return pd.Series(np.full(60, 1000.0), index=index)
+
+    monkeypatch.setattr(worker, "metric_series", fake_series)
+    monkeypatch.setattr(worker, "evaluation_anchor",
+                        lambda metric, today=None: (NOW.date(), False))
+
     workspace_id = await _workspace("broken@x.com")
     async with session_scope(workspace_id) as session:
         repo = AlertRepository(session)
@@ -65,7 +83,19 @@ async def test_inactive_alerts_are_skipped(db):
 
 
 @pytest.mark.asyncio
-async def test_sweep_covers_every_workspace(db):
+async def test_sweep_covers_every_workspace(db, monkeypatch):
+    """`checked` counts what the sweep looked at, so it holds whether or not the
+    demo warehouse exists -- but the stub keeps the test from depending on
+    gitignored data either way."""
+    import numpy as np
+    import pandas as pd
+
+    import app.workers.alerts as worker
+
+    monkeypatch.setattr(worker, "metric_series", lambda *a, **k: pd.Series(
+        np.full(60, 1000.0),
+        index=pd.date_range(end="2025-09-01", periods=60, freq="D")))
+
     first = await _workspace("one@x.com", "One")
     second = await _workspace("two@x.com", "Two")
     await _add_alert(first, "Alert when revenue drops 10%")
