@@ -60,6 +60,116 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const json = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
 
+/* -------------------------------------------------------------------------- */
+/*  Investigation types (inline to keep the API module self-contained)         */
+/* -------------------------------------------------------------------------- */
+
+export interface InvestigationPayload {
+  question: string;
+  metric_key?: string | null;
+  current_start?: string | null;
+  current_end?: string | null;
+  comparison_start?: string | null;
+  comparison_end?: string | null;
+  dimensions?: string[];
+  forecast_horizon?: number;
+}
+
+export interface InvestigationFullResult {
+  reference: string;
+  timeline: Record<string, unknown>[];
+  result: Record<string, unknown> | null;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Simulation types (match backend SimulationRequest exactly)                 */
+/* -------------------------------------------------------------------------- */
+
+export interface LeverSpec {
+  segment: string;
+  change_pct: number;
+  ramp_days?: number;
+  basis?: string;
+  rationale?: string;
+}
+
+export interface SimulationPayload {
+  metric_key: string;
+  dimension?: string;
+  baseline_start: string;
+  baseline_end: string;
+  levers: LeverSpec[];
+  horizon_days?: number;
+}
+
+export interface SimulationResult {
+  metric_key: string;
+  dimension: string;
+  baseline_window: string[];
+  summary: Record<string, unknown>;
+  result: Record<string, unknown>;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Causal types (match backend CausalRequest exactly)                        */
+/* -------------------------------------------------------------------------- */
+
+export interface CausalPayload {
+  metric_key: string;
+  dimension?: string;
+  treated_units: string[];
+  control_units?: string[] | null;
+  treatment_date: string;
+  start: string;
+  end: string;
+  grain?: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Model training types (match backend TrainRequest exactly)                  */
+/* -------------------------------------------------------------------------- */
+
+export interface TrainPayload {
+  data_source_id: string;
+  table: string;
+  target: string;
+  date_column?: string | null;
+  exclude?: string[];
+  max_rows?: number;
+}
+
+export interface TrainResult {
+  source_rows: number;
+  run_id: string;
+  task: string;
+  model_type: string;
+  metrics: Record<string, number>;
+  feature_importances: { feature: string; importance: number }[];
+  training_rows: number;
+  holdout_rows: number;
+  duration_ms: number;
+  columns_used: string[];
+  warnings: string[];
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Data source schema types                                                  */
+/* -------------------------------------------------------------------------- */
+
+export interface DataSourceSchema {
+  datasets: {
+    name: string;
+    physical_table: string;
+    approx_rows: number;
+    pii_columns: string[];
+    columns: { name: string; dtype: string; nullable: boolean; sample_values?: string[] }[];
+  }[];
+}
+
+/* -------------------------------------------------------------------------- */
+/*  API Client                                                                */
+/* -------------------------------------------------------------------------- */
+
 export const api = {
   capabilities: () =>
     request<{
@@ -75,6 +185,12 @@ export const api = {
 
   metrics: () => request<{ metrics: MetricSummary[] }>("/metrics"),
 
+  metricSearch: (q: string) =>
+    request<{ query: string; matches: MetricSummary[] }>(`/metrics/search?q=${encodeURIComponent(q)}`),
+
+  metricDetail: (key: string) =>
+    request<MetricSummary>(`/metrics/${encodeURIComponent(key)}`),
+
   history: (limit = 25, offset = 0) =>
     request<{ total: number; investigations: HistoryRow[] }>(
       `/investigations/history?limit=${limit}&offset=${offset}`,
@@ -82,6 +198,14 @@ export const api = {
 
   investigation: (reference: string) =>
     request<Record<string, unknown>>(`/investigations/${reference}`),
+
+  /** Export an investigation as markdown or PDF */
+  investigationExport: (reference: string, format: "markdown" | "pdf" = "markdown") =>
+    request<string>(`/investigations/${reference}/export?format=${format}`),
+
+  /** Run a synchronous investigation (HTTP POST fallback) */
+  investigate: (payload: InvestigationPayload) =>
+    request<InvestigationFullResult>("/investigations", json(payload)),
 
   previewAlert: (text: string, backtestDays = 180) =>
     request<AlertPreview>("/alerts/preview", json({ text, backtest_days: backtestDays })),
@@ -99,17 +223,37 @@ export const api = {
   evaluateAlert: (id: string) =>
     request<Record<string, unknown>>(`/alerts/${id}/evaluate`, { method: "POST" }),
 
-  diffInDiff: (payload: Record<string, unknown>) =>
+  /** Causal diff-in-diff analysis */
+  diffInDiff: (payload: CausalPayload) =>
     request<CausalResponse>("/analysis/causal/diff-in-diff", json(payload)),
 
-  simulate: (payload: Record<string, unknown>) =>
-    request<Record<string, unknown>>("/analysis/simulate", json(payload)),
+  /** Scenario simulation with segment-level levers */
+  simulate: (payload: SimulationPayload) =>
+    request<SimulationResult>("/analysis/simulate", json(payload)),
+
+  /** Break-even analysis */
+  breakEven: (payload: {
+    metric_key: string;
+    dimension?: string;
+    baseline_start: string;
+    baseline_end: string;
+    segment: string;
+    target_delta: number;
+    horizon_days?: number;
+  }) => request<Record<string, unknown>>("/analysis/simulate/break-even", json(payload)),
 
   dataSources: () =>
     request<{ data_sources: DataSourceSummary[] }>("/datasources"),
 
+  dataSourceSchema: (id: string) =>
+    request<DataSourceSchema>(`/datasources/${id}/schema`),
+
   crawlDataSource: (id: string) =>
     request<Record<string, unknown>>(`/datasources/${id}/crawl`, { method: "POST" }),
+
+  testDataSource: (id: string) =>
+    request<{ data_source_id: string; healthy: boolean; dialect: string; tables_in_catalog: number }>(
+      `/datasources/${id}/test`, { method: "POST" }),
 
   /** Generates and validates SQL without running it. */
   explainQuery: (question: string, dataSourceId: string) =>
@@ -118,6 +262,10 @@ export const api = {
   askQuery: (question: string, dataSourceId: string) =>
     request<AskResult>("/query/ask", json({ question, data_source_id: dataSourceId })),
 
+  /** Train an AutoML model */
+  trainModel: (payload: TrainPayload) =>
+    request<TrainResult>("/models/train", json(payload)),
+
   documents: () => request<{ documents: DocumentRecord[] }>("/documents"),
 
   ingestDocument: (title: string, text: string) =>
@@ -125,6 +273,10 @@ export const api = {
 
   searchDocuments: (query: string, topK = 5) =>
     request<DocumentSearchResult>("/documents/search", json({ query, top_k: topK })),
+
+  /** Ask a question against ingested documents */
+  askDocuments: (query: string, topK = 5) =>
+    request<Record<string, unknown>>("/documents/ask", json({ query, top_k: topK })),
 
   socketTicket: () =>
     request<{ ticket: string; expires_in: number }>("/investigations/ticket", {

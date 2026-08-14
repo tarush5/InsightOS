@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: insightos-api
+    env: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: LLM_PROVIDER
+        value: none
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:////tmp/insightos.db
+      - key: INSIGHTOS_SECRET_WAREHOUSE
+        value: sqlite+aiosqlite:////tmp/warehouse.db

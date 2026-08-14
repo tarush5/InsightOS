@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 const NODES = [
   { id: "sources", label: "Data sources", x: 40, y: 110 },
@@ -24,7 +25,16 @@ const at = (id: string) => NODES.find((n) => n.id === id)!;
  * suggest flow; with reduced motion they are simply omitted.
  */
 export function HeroDiagram() {
-  const reduce = useReducedMotion();
+  /* Defer particle rendering to the client to avoid hydration mismatch.
+     useReducedMotion and matchMedia differ between SSR (null) and client,
+     so we only render the animated circles after mount. */
+  const [mounted, setMounted] = useState(false);
+  const [reduce, setReduce] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setReduce(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }, []);
 
   return (
     <div className="panel overflow-hidden p-4">
@@ -48,7 +58,7 @@ export function HeroDiagram() {
           return (
             <g key={`${from}-${to}`}>
               <path d={d} fill="none" stroke="url(#edge)" strokeWidth={1.25} />
-              {!reduce && (
+              {mounted && !reduce && (
                 <circle r={2.5} fill="#22D3EE">
                   <animateMotion dur="3.2s" repeatCount="indefinite" path={d} />
                 </circle>
@@ -81,3 +91,4 @@ export function HeroDiagram() {
     </div>
   );
 }
+

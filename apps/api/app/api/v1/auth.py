@@ -13,7 +13,7 @@ from __future__ import annotations
 import uuid
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -144,14 +144,14 @@ async def refresh(payload: RefreshRequest,
                              Role(membership.role))
 
 
-@router.post("/logout", status_code=204)
+@router.post("/logout", status_code=204, response_class=Response)
 async def logout(payload: RefreshRequest,
                  principal: Principal = Depends(current_principal),
-                 session: AsyncSession = Depends(db_session)) -> None:
+                 session: AsyncSession = Depends(db_session)) -> Response:
     try:
         claims = decode_token(payload.refresh_token, expected_type="refresh")
     except jwt.InvalidTokenError:
-        return None                       # nothing to revoke; not an error
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     if claims.user_id != principal.user_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             "That token belongs to another session.")
@@ -159,7 +159,7 @@ async def logout(payload: RefreshRequest,
     await AuditRepository(session).record(
         action="auth.logout", workspace_id=principal.workspace_id,
         user_id=principal.user_id)
-    return None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me")
