@@ -1,5 +1,5 @@
 FROM python:3.12-slim AS base
-ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1 SEED_DIR=/app/seed
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -10,6 +10,10 @@ COPY apps/api/pyproject.toml ./
 RUN pip install --no-cache-dir -e ".[dev,ml]"
 
 COPY apps/api/ ./
+COPY scripts/ ./scripts/
+
+# Generate synthetic demo data inside image for seamless investigations
+RUN python scripts/seed_data.py --out ./seed --seed 42
 
 # Never run as root.
 RUN useradd --create-home --uid 10001 insightos && chown -R insightos:insightos /app

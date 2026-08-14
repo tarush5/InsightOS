@@ -19,3 +19,5 @@ services:
         value: sqlite+aiosqlite:////tmp/insightos.db
       - key: INSIGHTOS_SECRET_WAREHOUSE
         value: sqlite+aiosqlite:////tmp/warehouse.db
+      - key: SEED_DIR
+        value: /app/seed
